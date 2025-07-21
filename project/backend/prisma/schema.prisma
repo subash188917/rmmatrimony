@@ -1,0 +1,182 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String           @id @default(cuid())
+  email            String           @unique
+  phone            String           @unique
+  password         String
+  isVerified       Boolean          @default(false)
+  isActive         Boolean          @default(true)
+  role             UserRole         @default(USER)
+  subscriptionPlan SubscriptionPlan @default(FREE)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  // Relations
+  profile          Profile?
+  sentMatches      Match[]          @relation("SentMatches")
+  receivedMatches  Match[]          @relation("ReceivedMatches")
+  sentMessages     Message[]        @relation("SentMessages")
+  receivedMessages Message[]        @relation("ReceivedMessages")
+  subscriptions    Subscription[]
+  reports          Report[]         @relation("ReportedBy")
+  reportedUser     Report[]         @relation("ReportedUser")
+
+  @@map("users")
+}
+
+model Profile {
+  id             String        @id @default(cuid())
+  userId         String        @unique
+  firstName      String
+  lastName       String
+  dateOfBirth    DateTime
+  gender         Gender
+  height         Int
+  weight         Int?
+  complexion     String
+  physicalStatus String
+  maritalStatus  MaritalStatus @default(NEVER_MARRIED)
+  religion       String
+  caste          String
+  motherTongue   String
+  education      String
+  profession     String
+  company        String?
+  income         Int?
+  location       String
+  bio            String?
+  interests      String[]
+  photos         String[]
+  isVerified     Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+model Match {
+  id            String      @id @default(cuid())
+  userId        String
+  targetUserId  String
+  status        MatchStatus @default(PENDING)
+  compatibility Int?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  // Relations
+  user       User @relation("SentMatches", fields: [userId], references: [id], onDelete: Cascade)
+  targetUser User @relation("ReceivedMatches", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, targetUserId])
+  @@map("matches")
+}
+
+model Message {
+  id          String      @id @default(cuid())
+  senderId    String
+  receiverId  String
+  content     String
+  messageType MessageType @default(TEXT)
+  isRead      Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relations
+  sender   User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+model Subscription {
+  id        String           @id @default(cuid())
+  userId    String
+  plan      SubscriptionPlan
+  status    String
+  startDate DateTime
+  endDate   DateTime
+  amount    Float
+  currency  String           @default("INR")
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model Report {
+  id           String     @id @default(cuid())
+  reportedById String
+  reportedUserId String
+  reason       String
+  description  String?
+  status       ReportStatus @default(PENDING)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  // Relations
+  reportedBy   User @relation("ReportedBy", fields: [reportedById], references: [id], onDelete: Cascade)
+  reportedUser User @relation("ReportedUser", fields: [reportedUserId], references: [id], onDelete: Cascade)
+
+  @@map("reports")
+}
+
+// Enums
+enum UserRole {
+  USER
+  ADMIN
+  MODERATOR
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum MaritalStatus {
+  NEVER_MARRIED
+  DIVORCED
+  WIDOWED
+}
+
+enum SubscriptionPlan {
+  FREE
+  PREMIUM
+  GOLD
+}
+
+enum MatchStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  BLOCKED
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  RESOLVED
+  DISMISSED
+}
